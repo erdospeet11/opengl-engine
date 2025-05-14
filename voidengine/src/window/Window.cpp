@@ -1,6 +1,7 @@
 #include "Window.h"
 #include "../ui/UIManager.h"
 #include "../ui/FontRenderer.h"
+#include "../input/Input.h"
 #include <stdexcept>
 #include <filesystem>
 #include <iostream>
@@ -27,6 +28,10 @@ Window::Window(int width, int height, const std::string& title)
 
     glfwMakeContextCurrent(window_);
     
+    initializeInputSystem(window_);
+    
+    initializeInputMapping();
+   
     if (!ui::initializeFontSystem()) {
         throw std::runtime_error("Failed to initialize font system");
     }
@@ -64,8 +69,10 @@ Window::Window(int width, int height, const std::string& title)
 
 Window::~Window() {
     uiManager_.reset();
-    
+
     ui::shutdownFontSystem();
+    
+    shutdownInputSystem();
     
     if (window_) {
         glfwDestroyWindow(window_);
@@ -91,12 +98,27 @@ void Window::pollEvents() {
     }
     
     glfwPollEvents();
+    
+    if (gInputSystem) {
+        gInputSystem->update();
+    }
+    
+    if (gInputMapping) {
+        gInputMapping->update();
+    }
+    
+    if (uiManager_) {
+        uiManager_->update(0.016f);
+    }
 }
 
 void Window::clear(float r, float g, float b, float a) {
     glClearColor(r, g, b, a);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
+
+input::InputSystem* Window::getInputSystem() const {
+    return gInputSystem.get();
 
 void Window::setupCallbacks() {
     glfwSetWindowUserPointer(window_, this);
