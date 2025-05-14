@@ -32,7 +32,6 @@ public:
     GLFWwindow* getNativeWindow() const { return window_; }
     
     ui::UIManager* getUIManager() const { return uiManager_.get(); }
-    
     input::InputSystem* getInputSystem() const;
     
 private:
@@ -48,9 +47,16 @@ private:
     int width_;
     int height_;
     std::string title_;
-    
     std::unique_ptr<ui::UIManager> uiManager_;
-};
+    
+    static void framebufferSizeCallback(GLFWwindow* window, int width, int height);
+    static void mouseMoveCallback(GLFWwindow* window, double xpos, double ypos);
+    static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
+    static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+    static void charCallback(GLFWwindow* window, unsigned int codepoint);
+    
+    void setupCallbacks();
+}; 
 
 } // namespace window
 } // namespace voidengine 

@@ -31,7 +31,7 @@ Window::Window(int width, int height, const std::string& title)
     initializeInputSystem(window_);
     
     initializeInputMapping();
-    
+   
     if (!ui::initializeFontSystem()) {
         throw std::runtime_error("Failed to initialize font system");
     }
@@ -64,6 +64,7 @@ Window::Window(int width, int height, const std::string& title)
     
     uiManager_ = std::make_unique<ui::UIManager>(this);
     
+    setupCallbacks();
 }
 
 Window::~Window() {
@@ -92,6 +93,10 @@ void Window::swapBuffers() {
 }
 
 void Window::pollEvents() {
+    if (uiManager_) {
+        uiManager_->update(0.016f);
+    }
+    
     glfwPollEvents();
     
     if (gInputSystem) {
@@ -114,12 +119,16 @@ void Window::clear(float r, float g, float b, float a) {
 
 input::InputSystem* Window::getInputSystem() const {
     return gInputSystem.get();
-}
 
 void Window::setupCallbacks() {
     glfwSetWindowUserPointer(window_, this);
     
     glfwSetFramebufferSizeCallback(window_, framebufferSizeCallback);
+    
+    glfwSetCursorPosCallback(window_, mouseMoveCallback);
+    glfwSetMouseButtonCallback(window_, mouseButtonCallback);
+    glfwSetKeyCallback(window_, keyCallback);
+    glfwSetCharCallback(window_, charCallback);
 }
 
 void Window::framebufferSizeCallback(GLFWwindow* window, int width, int height) {
@@ -136,18 +145,34 @@ void Window::framebufferSizeCallback(GLFWwindow* window, int width, int height) 
     }
 }
 
-void Window::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+void Window::mouseMoveCallback(GLFWwindow* window, double xpos, double ypos) {
+    Window* windowPtr = static_cast<Window*>(glfwGetWindowUserPointer(window));
+    if (windowPtr && windowPtr->uiManager_) {
+        windowPtr->uiManager_->onMouseMove(xpos, ypos);
+    }
 }
 
-void Window::mouseMoveCallback(GLFWwindow* window, double xpos, double ypos) {
-
+void Window::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+    Window* windowPtr = static_cast<Window*>(glfwGetWindowUserPointer(window));
+    if (windowPtr && windowPtr->uiManager_) {
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
+        windowPtr->uiManager_->onMouseButton(button, action, mods, xpos, ypos);
+    }
 }
 
 void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    Window* windowPtr = static_cast<Window*>(glfwGetWindowUserPointer(window));
+    if (windowPtr && windowPtr->uiManager_) {
+        windowPtr->uiManager_->onKey(key, scancode, action, mods);
+    }
 }
 
 void Window::charCallback(GLFWwindow* window, unsigned int codepoint) {
-
+    Window* windowPtr = static_cast<Window*>(glfwGetWindowUserPointer(window));
+    if (windowPtr && windowPtr->uiManager_) {
+        windowPtr->uiManager_->onChar(codepoint);
+    }
 }
 
 } // namespace window
