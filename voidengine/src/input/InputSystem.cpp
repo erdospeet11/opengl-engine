@@ -255,6 +255,13 @@ glm::vec2 InputSystem::getMouseDelta() const {
     return mouseDelta_;
 }
 
+void InputSystem::setMousePosition(const glm::vec2& position) {
+    // Store previous position for delta calculation
+    lastMousePosition_ = mousePosition_;
+    // Update current position
+    mousePosition_ = position;
+}
+
 glm::vec2 InputSystem::getGamepadAxis(int gamepadId, int axisX, int axisY) const {
     glm::vec2 result(0.0f);
     
@@ -446,6 +453,32 @@ void InputSystem::joystickCallback(int jid, int event) {
         
         instance_->gamepadButtonStates_.erase(jid);
         instance_->gamepadAxisValues_.erase(jid);
+    }
+}
+
+void InputSystem::updateKeyState(int keyCode, ButtonState state) {
+    keyStates_[keyCode] = state;
+}
+
+void InputSystem::updateMouseButtonState(int button, ButtonState state) {
+    mouseButtonStates_[button] = state;
+}
+
+void InputSystem::appendTextInput(unsigned int codepoint) {
+    if (codepoint < 0x80) {
+        textInput_ += static_cast<char>(codepoint);
+    } else if (codepoint < 0x800) {
+        textInput_ += static_cast<char>(0xC0 | (codepoint >> 6));
+        textInput_ += static_cast<char>(0x80 | (codepoint & 0x3F));
+    } else if (codepoint < 0x10000) {
+        textInput_ += static_cast<char>(0xE0 | (codepoint >> 12));
+        textInput_ += static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
+        textInput_ += static_cast<char>(0x80 | (codepoint & 0x3F));
+    } else {
+        textInput_ += static_cast<char>(0xF0 | (codepoint >> 18));
+        textInput_ += static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F));
+        textInput_ += static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
+        textInput_ += static_cast<char>(0x80 | (codepoint & 0x3F));
     }
 }
 

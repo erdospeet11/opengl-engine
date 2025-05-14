@@ -28,7 +28,12 @@ Window::Window(int width, int height, const std::string& title)
 
     glfwMakeContextCurrent(window_);
     
-    initializeInputSystem(window_);
+    glfwSetWindowUserPointer(window_, this);
+    
+    if (!gInputSystem) {
+        gInputSystem = std::make_unique<input::InputSystem>();
+    }
+    gInputSystem->initialize(window_);
     
     initializeInputMapping();
    
@@ -64,6 +69,7 @@ Window::Window(int width, int height, const std::string& title)
     
     uiManager_ = std::make_unique<ui::UIManager>(this);
     
+    // Now set up our callbacks that will handle both UI and input system
     setupCallbacks();
 }
 
@@ -119,16 +125,126 @@ void Window::clear(float r, float g, float b, float a) {
 
 input::InputSystem* Window::getInputSystem() const {
     return gInputSystem.get();
+}
 
 void Window::setupCallbacks() {
-    glfwSetWindowUserPointer(window_, this);
-    
+    // Set the framebuffer callback
     glfwSetFramebufferSizeCallback(window_, framebufferSizeCallback);
     
-    glfwSetCursorPosCallback(window_, mouseMoveCallback);
-    glfwSetMouseButtonCallback(window_, mouseButtonCallback);
-    glfwSetKeyCallback(window_, keyCallback);
-    glfwSetCharCallback(window_, charCallback);
+    // Set up the mouse move callback to work with both UI and InputSystem
+    glfwSetCursorPosCallback(window_, [](GLFWwindow* window, double xpos, double ypos) {
+        // First, call our UI callback
+        Window* windowPtr = static_cast<Window*>(glfwGetWindowUserPointer(window));
+        if (windowPtr && windowPtr->uiManager_) {
+            windowPtr->uiManager_->onMouseMove(xpos, ypos);
+        }
+        
+        // Manually update the input system with the mouse move event
+        if (gInputSystem) {
+            // Set the mouse position directly in the InputSystem
+            gInputSystem->setMousePosition(glm::vec2(xpos, ypos));
+            
+            // Create and dispatch the event
+            input::InputEvent event;
+            event.type = input::EventType::MOUSE_MOVE;
+            event.position = glm::vec2(xpos, ypos);
+            event.delta = glm::vec2(0, 0); // Delta will be calculated in update
+            gInputSystem->processInputEvent(event);
+        }
+    });
+    
+    // Set up the mouse button callback to work with both UI and InputSystem
+    glfwSetMouseButtonCallback(window_, [](GLFWwindow* window, int button, int action, int mods) {
+        // First, call our UI callback
+        Window* windowPtr = static_cast<Window*>(glfwGetWindowUserPointer(window));
+        if (windowPtr && windowPtr->uiManager_) {
+            double xpos, ypos;
+            glfwGetCursorPos(window, &xpos, &ypos);
+            windowPtr->uiManager_->onMouseButton(button, action, mods, xpos, ypos);
+        }
+        
+        // Manually update the input system with the mouse button event
+        if (gInputSystem) {
+            input::ButtonState state;
+            switch (action) {
+                case GLFW_PRESS:
+                    state = input::ButtonState::PRESSED_THIS_FRAME;
+                    break;
+                case GLFW_RELEASE:
+                    state = input::ButtonState::RELEASED_THIS_FRAME;
+                    break;
+                default:
+                    state = input::ButtonState::RELEASED;
+                    break;
+            }
+            
+            gInputSystem->updateMouseButtonState(button, state);
+            
+            double xpos, ypos;
+            glfwGetCursorPos(window, &xpos, &ypos);
+            
+            input::InputEvent event;
+            event.type = input::EventType::MOUSE_BUTTON;
+            event.code = button;
+            event.state = state;
+            event.position = glm::vec2(xpos, ypos);
+            event.mods = mods;
+            
+            gInputSystem->processInputEvent(event);
+        }
+    });
+    
+    // Set up the key callback to work with both UI and InputSystem
+    glfwSetKeyCallback(window_, [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+        // First, call our UI callback
+        Window* windowPtr = static_cast<Window*>(glfwGetWindowUserPointer(window));
+        if (windowPtr && windowPtr->uiManager_) {
+            windowPtr->uiManager_->onKey(key, scancode, action, mods);
+        }
+        
+        // Manually update the input system with the key event
+        if (gInputSystem) {
+            input::ButtonState state;
+            switch (action) {
+                case GLFW_PRESS:
+                    state = input::ButtonState::PRESSED_THIS_FRAME;
+                    break;
+                case GLFW_RELEASE:
+                    state = input::ButtonState::RELEASED_THIS_FRAME;
+                    break;
+                case GLFW_REPEAT:
+                    state = input::ButtonState::HELD;
+                    break;
+                default:
+                    state = input::ButtonState::RELEASED;
+                    break;
+            }
+            
+            gInputSystem->updateKeyState(key, state);
+            
+            input::InputEvent event;
+            event.type = input::EventType::KEY;
+            event.code = key;
+            event.state = state;
+            event.mods = mods;
+            
+            gInputSystem->processInputEvent(event);
+        }
+    });
+    
+    // Set up the char callback to work with both UI and InputSystem
+    glfwSetCharCallback(window_, [](GLFWwindow* window, unsigned int codepoint) {
+        // First, call our UI callback
+        Window* windowPtr = static_cast<Window*>(glfwGetWindowUserPointer(window));
+        if (windowPtr && windowPtr->uiManager_) {
+            windowPtr->uiManager_->onChar(codepoint);
+        }
+        
+        // Manually update the input system with the char event
+        if (gInputSystem) {
+            gInputSystem->appendTextInput(codepoint);
+        }
+    });
 }
 
 void Window::framebufferSizeCallback(GLFWwindow* window, int width, int height) {
