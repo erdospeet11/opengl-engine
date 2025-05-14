@@ -3,7 +3,7 @@
 
 int main() {
     try {
-        voidengine::Window window(800, 600, "VoidEngine Demo");
+        voidengine::window::Window window(800, 600, "VoidEngine Demo");
 
         while (!window.shouldClose()) {
             window.clear(0.1f, 0.1f, 0.2f, 1.0f);

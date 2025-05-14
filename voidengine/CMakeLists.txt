@@ -10,6 +10,7 @@ find_package(OpenGL REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glm REQUIRED)
+find_package(Freetype REQUIRED)
 
 #include directories
 include_directories(
@@ -17,6 +18,7 @@ include_directories(
     ${GLFW_INCLUDE_DIRS}
     ${GLEW_INCLUDE_DIRS}
     ${GLM_INCLUDE_DIRS}
+    ${FREETYPE_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
@@ -33,6 +35,7 @@ target_link_libraries(voidengine
     glfw
     GLEW::GLEW
     glm::glm
+    ${FREETYPE_LIBRARIES}
 )
 
 # examples
